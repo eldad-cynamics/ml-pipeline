@@ -1,2 +1,10 @@
 boto3
 scikit-learn
+numpy
+pandas
+sqlalchemy
+psycopg2-binary
+sagemaker
+loguru
+matplotlib
+h5py

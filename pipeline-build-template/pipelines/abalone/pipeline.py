@@ -746,3 +746,6 @@ def get_pipeline(
         sagemaker_session=pipeline_session,
     )
     return pipeline
+
+if __name__ == '__main__':
+    import loguru
