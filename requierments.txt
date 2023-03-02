@@ -8,3 +8,10 @@ sagemaker
 loguru
 matplotlib
 h5py
+pyyaml
+pillow
+
+#
+keras
+tensorflow
+seaborn

@@ -20,7 +20,7 @@ def save_csv_gz_to_s3(df, s3_path, bucket='rsrch-cynamics-datasets'):
     s3_object = boto3.resource('s3').Object(bucket, s3_path)
     s3_object.put(Body=buffer.getvalue())
 
-    print('Done!', flush=True)
+    print('Done writing csv_gz to s3!', flush=True)
     
 def query_redshift(client, device, sr, day, account_id, device_id, time_window_size=5):
     dbname='cynamics'
@@ -28,6 +28,7 @@ def query_redshift(client, device, sr, day, account_id, device_id, time_window_s
     port=5439
     user='ro_user'
     password='37gvWDy5GZnwwdXjhGgQ'
+
 
     connstr = f'postgresql://{user}:{password}@{cluster}.redshift.amazonaws.com:5439/cynamics'
     engine = create_engine(connstr) 
