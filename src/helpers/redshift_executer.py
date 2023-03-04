@@ -34,3 +34,4 @@ def execute_query(query, params):
         if connection is not None:
             connection.close()
         return result
+

@@ -10,8 +10,9 @@ matplotlib
 h5py
 pyyaml
 pillow
+logzio-python-handler
 
-#
+# dev
 keras
 tensorflow
 seaborn

@@ -4,13 +4,14 @@ import json
 import boto3
 import base64
 
-from src.helpers import logger
+from . import logger
 
 config_env = os.environ["CYNAMICS_ENV"]
 
 
 
-@functools.lru_cach
+
+@functools.lru_cache
 @functools.lru_cache(128)
 def get_param(key):
     try:
