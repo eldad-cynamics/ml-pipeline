@@ -1,5 +1,7 @@
 import gc
 import gzip
+import os
+
 import boto3
 import pandas as pd
 import psycopg2
@@ -9,6 +11,60 @@ from sqlalchemy import create_engine
 from matplotlib import pyplot as plt
 from loguru import logger
 from .X_generator import *
+
+
+def redshift_query (query_order):
+    """
+    Connects to AWS Redshift, executes a query on a table, and returns the results as a Pandas dataframe.
+
+    Args:
+        redshift_endpoint (str): The endpoint URL of the Redshift cluster.
+        redshift_port (str): The port number for the Redshift cluster.
+        redshift_user (str): The username for the Redshift cluster.
+        redshift_password (str): The password for the Redshift cluster.
+        redshift_database (str): The name of the Redshift database.
+        query_order (str): The SQL query order to be executed.
+
+    Returns:
+        A Pandas dataframe containing the results of the query, or None if an error occurs.
+    """
+    # Connect to Redshift
+
+    redshift_database = os.getenv('redshift_database')
+    redshift_host = os.getenv('redshift_host')
+    redshift_port = os.getenv('redshift_port')
+    redshift_user = os.getenv('redshift_user')
+    redshift_password = os.getenv('redshift_password')
+
+    try:
+        conn = psycopg2.connect(
+            host=redshift_host,
+            port=redshift_port,
+            user=redshift_user,
+            password=redshift_password,
+            database=redshift_database
+        )
+        logger.info('Connected to Redshift')
+    except Exception as e:
+        logger.exception('Error connecting to Redshift:', e)
+        return None
+
+    # Query a table
+    try:
+        df = pd.read_sql(query_order, conn)
+        logger.info('Table query successful')
+    except Exception as e:
+        logger.exception('Error querying table:', e)
+        df = None
+
+    # Close the connection
+    try:
+        conn.close()
+        logger.info('Connection closed')
+    except Exception as e:
+        logger.exception('Error closing connection:', e)
+
+    return df
 
 
 def save_csv_gz_to_s3 (df, s3_path, bucket='rsrch-cynamics-datasets'):
@@ -128,57 +184,4 @@ def create_X_v1_v3 (sampled_df, day, client, device, sr, model_version, dataset_
     del v3_features_df, X_v3, y_v3
 
 
-# def redshift_query(redshift_endpoint, redshift_port, redshift_user, redshift_password, redshift_database, query_order):
-def redshift_query (query_order):
-    """
-    Connects to AWS Redshift, executes a query on a table, and returns the results as a Pandas dataframe.
-
-    Args:
-        redshift_endpoint (str): The endpoint URL of the Redshift cluster.
-        redshift_port (str): The port number for the Redshift cluster.
-        redshift_user (str): The username for the Redshift cluster.
-        redshift_password (str): The password for the Redshift cluster.
-        redshift_database (str): The name of the Redshift database.
-        query_order (str): The SQL query order to be executed.
-
-    Returns:
-        A Pandas dataframe containing the results of the query, or None if an error occurs.
-    """
-    # Connect to Redshift
-
-    redshift_database = 'cynamics'
-    redshift_host = 'prodredshiftcluster.chk0levkctdj.us-east-1.redshift.amazonaws.com'
-    redshift_port = 5439
-    redshift_user = 'ro_user'
-    redshift_password = '37gvWDy5GZnwwdXjhGgQ'
-
-    try:
-        conn = psycopg2.connect(
-            host=redshift_host,
-            port=redshift_port,
-            user=redshift_user,
-            password=redshift_password,
-            database=redshift_database
-        )
-        print('Connected to Redshift')
-    except Exception as e:
-        print('Error connecting to Redshift:', e)
-        return None
-
-    # Query a table
-    try:
-        df = pd.read_sql(query_order, conn)
-        print('Table query successful')
-    except Exception as e:
-        print('Error querying table:', e)
-        df = None
-
-    # Close the connection
-    try:
-        conn.close()
-        print('Connection closed')
-    except Exception as e:
-        print('Error closing connection:', e)
-
-    return df
 
