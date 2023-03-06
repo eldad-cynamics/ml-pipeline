@@ -80,57 +80,6 @@ def save_csv_gz_to_s3 (df, s3_path, bucket='rsrch-cynamics-datasets'):
     logger.info('Done writing csv_gz to s3!', flush=True)
 
 
-def query_redshift (client, device, sr, day, account_id, device_id, time_window_size=5):
-    dbname = 'cynamics'
-    cluster = 'prodredshiftcluster.chk0levkctdj.us-east-1'
-    port = 5439
-    user = 'ro_user'
-    password = '37gvWDy5GZnwwdXjhGgQ'
-
-    connstr = f'postgresql://{user}:{password}@{cluster}.redshift.amazonaws.com:5439/cynamics'
-    engine = create_engine(connstr)
-
-    start = (datetime.strptime(day, '%Y-%m-%d') - datetime(1970, 1, 1)).total_seconds()
-    end = start + (24 * 60 * 60)
-
-    print(f'Querying {client}, device={device}, day={day}', end='...')
-    query = f"""
-    select creationtime, ipv4src, sourceport, ipprotocol, ipv4dest, destport, length, flowpackets
-    from public.rawdatas
-    where accountid='{account_id}'
-      and deviceid = '{device_id}'
-      and creationtime >= timestamp 'epoch' + {start} * interval '1 second'
-      and creationtime <  timestamp 'epoch' + {end}   * interval '1 second'
-      and samplingrate = {sr}
-    --limit 100"""
-
-    with engine.connect() as conn, conn.begin():
-        df = pd.read_sql(query, conn)
-    print('df shape: ', df.shape, end='...')
-
-    df['timestamp'] = (pd.to_datetime(df['creationtime']) - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
-    df['time_window'] = df['timestamp'] - (df['timestamp'] % time_window_size)
-
-    print('Renaming', end='...')
-    df = df.rename(columns={'length': 'volume',
-                            'ipv4src': 'ipv4Src',
-                            'sourceport': 'sourcePort',
-                            'ipprotocol': 'ipProtocol',
-                            'ipv4dest': 'ipv4Dest',
-                            'destport': 'destPort',
-                            'flowpackets': 'flowPackets'
-                            })
-    df = df.groupby(['ipv4Src', 'sourcePort', 'ipProtocol',
-                     'ipv4Dest', 'destPort', 'time_window']) \
-        .agg({'flowPackets': sum,
-              'volume': sum
-              }).sort_values('time_window').reset_index()
-
-    save_csv_gz_to_s3(df, f'clients/{client}/sr={sr}/device={device}/sampled/{day}.csv.gz')
-
-    return df
-
-
 def create_X_v1_v3 (sampled_df, day, client, device, sr, model_version, dataset_type,
                     time_window_size=5, sliding_window_size=20, bucket='rsrch-cynamics-datasets'):
     s3_bucket = boto3.resource('s3').Bucket(bucket)
@@ -183,5 +132,52 @@ def create_X_v1_v3 (sampled_df, day, client, device, sr, model_version, dataset_
 
     del v3_features_df, X_v3, y_v3
 
-
-
+# def query_redshift (client, device, sr, day, account_id, device_id, time_window_size=5):
+#     dbname = 'cynamics'
+#     cluster = 'prodredshiftcluster.chk0levkctdj.us-east-1'
+#     port = 5439
+#     user = 'ro_user'
+#     password = '37gvWDy5GZnwwdXjhGgQ'
+#
+#     connstr = f'postgresql://{user}:{password}@{cluster}.redshift.amazonaws.com:5439/cynamics'
+#     engine = create_engine(connstr)
+#
+#     start = (datetime.strptime(day, '%Y-%m-%d') - datetime(1970, 1, 1)).total_seconds()
+#     end = start + (24 * 60 * 60)
+#
+#     print(f'Querying {client}, device={device}, day={day}', end='...')
+#     query = f"""
+#     select creationtime, ipv4src, sourceport, ipprotocol, ipv4dest, destport, length, flowpackets
+#     from public.rawdatas
+#     where accountid='{account_id}'
+#       and deviceid = '{device_id}'
+#       and creationtime >= timestamp 'epoch' + {start} * interval '1 second'
+#       and creationtime <  timestamp 'epoch' + {end}   * interval '1 second'
+#       and samplingrate = {sr}
+#     --limit 100"""
+#
+#     with engine.connect() as conn, conn.begin():
+#         df = pd.read_sql(query, conn)
+#     print('df shape: ', df.shape, end='...')
+#
+#     df['timestamp'] = (pd.to_datetime(df['creationtime']) - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
+#     df['time_window'] = df['timestamp'] - (df['timestamp'] % time_window_size)
+#
+#     print('Renaming', end='...')
+#     df = df.rename(columns={'length': 'volume',
+#                             'ipv4src': 'ipv4Src',
+#                             'sourceport': 'sourcePort',
+#                             'ipprotocol': 'ipProtocol',
+#                             'ipv4dest': 'ipv4Dest',
+#                             'destport': 'destPort',
+#                             'flowpackets': 'flowPackets'
+#                             })
+#     df = df.groupby(['ipv4Src', 'sourcePort', 'ipProtocol',
+#                      'ipv4Dest', 'destPort', 'time_window']) \
+#         .agg({'flowPackets': sum,
+#               'volume': sum
+#               }).sort_values('time_window').reset_index()
+#
+#     save_csv_gz_to_s3(df, f'clients/{client}/sr={sr}/device={device}/sampled/{day}.csv.gz')
+#
+#     return df
